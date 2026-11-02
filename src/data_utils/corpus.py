@@ -19,6 +19,10 @@ class Corpus:
             shutil.rmtree(f'{base_dir}/raw')
         else:
             self.ds = load_from_disk(f'{base_dir}/{self.dataset_name}')
+            # query_id / document_id columns were saved with the dataset; rebuild the mapping from them
+            self.relevant_ids = {q_id: doc_ids
+                                 for split in self.ds.values()
+                                 for q_id, doc_ids in zip(split['query_id'], split['document_id'])}
 
 
     @property
