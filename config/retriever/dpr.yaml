@@ -1,1 +1,2 @@
 method: "dpr"
+index_path: "index/dpr_index_{dataset}.pkl"

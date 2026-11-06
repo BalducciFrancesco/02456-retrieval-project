@@ -3,7 +3,7 @@ from src.retrievers.tf_idf import TFIDF
 from src.data_utils.document import Document
 
 class BM25(TFIDF):
-    def __init__(self, documents: list[dict] = None, index_path: str = None, k1: float = 1.5, b: float = 0.75) -> None:
+    def __init__(self, documents: list[dict], index_path: str, k1: float = 1.5, b: float = 0.75) -> None:
         super(BM25, self).__init__(documents, index_path)
         self.k1 = k1
         self.b = b

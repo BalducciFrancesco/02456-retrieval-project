@@ -1,1 +1,2 @@
 method: "td-idf"
+index_path: "index/tf_idf_index_{dataset}.pkl"

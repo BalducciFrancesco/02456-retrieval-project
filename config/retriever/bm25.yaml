@@ -1,1 +1,2 @@
 method: "bm25"
+index_path: "index/bm25_index_{dataset}.pkl"
