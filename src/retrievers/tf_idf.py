@@ -5,7 +5,7 @@ from scipy.sparse import lil_matrix
 
 
 class TFIDF(Retriever):
-    def __init__(self, documents: list[dict] = None, index_path: str = None) -> None:
+    def __init__(self, documents: list[dict], index_path: str) -> None:
         super(TFIDF, self).__init__(documents, index_path)
         self.corpus_vocabulary = self.GetCorpusVocabulary()
         self.idf = self.GetInverseDocumentFrequencies()
