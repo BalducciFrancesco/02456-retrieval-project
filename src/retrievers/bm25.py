@@ -1,6 +1,8 @@
 from scipy.sparse import lil_matrix
 from src.retrievers.tf_idf import TFIDF
 from src.data_utils.document import Document
+import numpy as np
+import math
 
 class BM25(TFIDF):
     def __init__(self, documents: list[dict], index_path: str, k1: float = 1.5, b: float = 0.75) -> None:
@@ -18,6 +20,25 @@ class BM25(TFIDF):
         return document_lengths, average_document_length/len(self.index.GetDocuments())
     
     # TODO: Add methods for computing self.bm25_matrix
+    def GetBM25IDF(self):
+        N = len(self.index.GetDocuments())
+        return {key: math.log((N + 1) / (n_qi + 0.5)) for key, n_qi in self.GetDocumentFrequencies().items()}
+
+    def GetBM25Vector(self):
+        self.term_to_index = {term: idx for idx, term in enumerate(self.corpus_vocabulary)}
+        docs = self.index.GetDocuments()
+        bm25_vector = lil_matrix((len(self.index.GetDocuments()), len(self.corpus_vocabulary)),
+                                  dtype=np.float32)
+        bm25_idf = self.GetBM25IDF() # dict  of word: bm25_imf
+
+        
+        #IDF -> change to BM25
+        for i, doc in enumerate(docs):
+            for key, value in self.GetDocumentTermCounts(doc).items():
+                numerator = value * (self.k1 + 1)
+                bm25_vector[i, self.term_to_index[key]] = value * bm25_idf[key]
+
+        return bm25_vector.tocsr()
     
     def CalculateScores(self, queries: list[str]):
         """Calculate scores for a query

@@ -87,13 +87,12 @@ class TFIDF(Retriever):
         tfidf_matrix = lil_matrix((n_documents, n_terms), dtype=np.float32)
 
         # Get IDF -> dict[str, float] and documents
-        idf = self.GetInverseDocumentFrequencies()
         docs = self.index.GetDocuments()
 
         for i, doc in enumerate(docs):
-            for key, value in idf.items():
+            for key, value in self.GetDocumentTermCounts(doc).items():
                 j = self.term_to_index[key]
-                tfidf_matrix[i, j] = value * idf[key]
+                tfidf_matrix[i, j] = value * self.idf[key]
 
         return tfidf_matrix.tocsr()   # Convert to CSR format for efficient row slicing
     
