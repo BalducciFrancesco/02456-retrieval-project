@@ -10,19 +10,10 @@ class Retriever(ABC):
         if os.path.exists(index_path):
             self.index = self.__LoadIndex(index_path)
         else:
-            self.index = self.__BuildIndex(index_path, documents)
+            self.index = self.__InitIndex(documents)
 
-    def __BuildIndex(self, index_path: str, documents: list[dict]) -> DocumentDataset:
-        """
-        @param dataset: The dataset for which an index containing embeddings should be built and saved.
-        """
-        embeddings = self.EmbedDocuments(documents)
-        index = DocumentDataset(documents, embeddings)
-        # save the index
-        os.makedirs(os.path.dirname(index_path), exist_ok=True)
-        with open(index_path, 'wb') as file:
-            pickle.dump(index, file)
-        return index
+    def __InitIndex(self, documents: list[dict]):
+        return DocumentDataset(documents)
 
     def __LoadIndex(self, index_path: str) -> DocumentDataset:
         """
@@ -32,10 +23,27 @@ class Retriever(ABC):
             index = pickle.load(file)
         return index
 
+    def BuildIndex(self, index_path: str, documents: list[dict]) -> DocumentDataset:
+        """
+        @param dataset: The dataset for which an index containing embeddings should be built and saved.
+        """
+        # embed the documents
+        embeddings = self.EmbedDocuments(documents)
+        index = DocumentDataset(documents, embeddings)
+        self.index = index
+        # save the index to file
+        os.makedirs(os.path.dirname(index_path), exist_ok=True)
+        with open(index_path, 'wb') as file:
+            pickle.dump(index, file)
+        return index
+
     def Lookup(self, queries: list[str], k: int) -> list:
         """
+        Retrieves the top-k relevant documents for each input query.
+
         @param queries: The input text(s) to which relevant passages should be found.
         @param k: The number of relevant passages to retrieve for each input query.
+        @return: A list of lists of the top-k relevant documents for each input query.
         """
         scores = self.CalculateScores(queries)
         ranked_documents = [[d for _, d in sorted(zip(query_scores, self.index.GetDocuments()), key=lambda pair: pair[0], reverse=True)] for query_scores in scores]
@@ -49,6 +57,7 @@ class Retriever(ABC):
     def CalculateScores(self, query: list[str]) -> NDArray[np.float32]:
         """
         Embeds and computes the similarity scores between the queries and the document embeddings (requires index).
+
         @param query: The input text(s) to which relevant passages should be found.
         @return: A numpy array of shape (n_queries, n_documents) with the scores for each query-document pair.
         """
