@@ -2,6 +2,7 @@ import os
 import shutil
 import json
 from datasets import Dataset, DatasetDict, load_from_disk
+from src.data_utils.query import Query
 from src.data_utils.download_retrieval_datasets import get_fiqa_dataset, get_squad_dataset
 
 class Corpus:
@@ -54,6 +55,16 @@ class Corpus:
 
         return Dataset.from_dict({'text': all_text,
                                   'document_id': all_ids})
+
+    def GetQuerySplits(self):
+        def make(split):
+            if split is None:
+                return []
+            return [
+                Query(q, id=qid, relevant_document_ids=self.relevant_ids[qid])
+                for q, qid in zip(split["question"], split["query_id"])
+            ]
+        return make(self.train), make(self.val), make(self.test)
 
 
     def __load_data(self, base_dir) -> dict[Dataset]:
