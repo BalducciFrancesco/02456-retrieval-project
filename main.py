@@ -33,8 +33,8 @@ def main(cfg):
                     ]
     
     ### Initialize the model
-    # model = TFIDF(documents=corpus.all_documents)
-    model = DPR(cfg, documents=corpus.all_documents)
+    model = TFIDF(documents=corpus.all_documents)
+    #model = DPR(cfg, documents=corpus.all_documents)
     
     ### Retrieve top-k relevant queries
     train_relevancies = retrieveQueryAndGetRelevancies(model, train_queries, k=cfg.top_k)
