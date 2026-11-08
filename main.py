@@ -1,41 +1,32 @@
 import hydra
 from src.data_utils.corpus import Corpus
+from src.retrievers.bm25 import BM25
 from src.retrievers.dpr import DPR
-from src.data_utils.query import Query
 from src.retrievers.tf_idf import TFIDF
 from src.retrievers.utils import retrieveQueryAndGetRelevancies
 from src.evaluation.metrics import Evaluate
+from src.training.trainer import Trainer
 
 @hydra.main(config_path='config', config_name='fiqa_experiment.yaml', version_base=None)
 def main(cfg):
     ### Load a dataset
     corpus = Corpus(dataset_name=cfg.dataset.name, base_dir=f'{cfg.base_path}/retrieval_data')
-    ### Prepare queries
-    train_queries = [Query(corpus.train['question'][idx], 
-                           id=corpus.train['query_id'][idx], 
-                           relevant_document_ids=corpus.relevant_ids[corpus.train['query_id'][idx]]
-                           ) 
-                        for idx in range(corpus.train.num_rows)
-                    ]
+    train_queries, val_queries, test_queries = corpus.GetQuerySplits()
 
-    val_queries =   [Query(corpus.val['question'][idx], 
-                         id=corpus.val['query_id'][idx], 
-                         relevant_document_ids=corpus.relevant_ids[corpus.val['query_id'][idx]]
-                           ) 
-                        for idx in range(corpus.val.num_rows)
-                    ]
-    
-    test_queries =  [Query(corpus.test['question'][idx], 
-                           id=corpus.test['query_id'][idx], 
-                           relevant_document_ids=corpus.relevant_ids[corpus.test['query_id'][idx]]
-                           ) 
-                        for idx in range(corpus.test.num_rows)
-                    ]
-    
     ### Initialize the model
-    # model = TFIDF(documents=corpus.all_documents)
-    model = DPR(cfg, corpus.all_documents)
-    
+    match cfg.retriever.method:
+        case "dpr":
+            model = DPR(cfg, documents=corpus.all_documents)
+            trainer = Trainer(corpus.train)
+            trainer.train(model.query_encoder, model.document_encoder)
+        case "tf-idf":
+            model = TFIDF(documents=corpus.all_documents)
+        case "bm25":
+            model = BM25(documents=corpus.all_documents)
+        case _:
+            raise ValueError(f"Unknown retriever: {cfg.retriever}")
+
+
     ### Retrieve top-k relevant queries
     train_relevancies = retrieveQueryAndGetRelevancies(model, train_queries, k=cfg.top_k)
     val_relevancies = retrieveQueryAndGetRelevancies(model, val_queries, k=cfg.top_k)

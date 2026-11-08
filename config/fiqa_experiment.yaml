@@ -1,11 +1,10 @@
 defaults: # - folder: file.yaml to include under the "folder" named property of cfg
   - _self_  # Hydra magic
   - dataset: fiqa
-  - retriever: tf_idf
-  - model: encoder
+  - retriever: dpr
 
 
-device: cpu
+device: mps
 base_path: "."
 top_k: 10
 

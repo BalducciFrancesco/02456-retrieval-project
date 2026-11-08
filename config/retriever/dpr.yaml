@@ -1,2 +1,21 @@
 method: "dpr"
 index_path: "index/dpr_index_{dataset}.pkl"
+pooling_type: 'cls' # mean | cls | max
+
+query_encoder:
+  name: prajjwal1/bert-tiny
+  weights_path:
+  emb_dim: 128
+  hidden_dim: 32
+  n_heads: 4
+  n_layers: 6
+  feed_forward_dim: 768
+
+document_encoder:
+  name: prajjwal1/bert-tiny
+  weights_path:
+  emb_dim: 128
+  hidden_dim: 32
+  n_heads: 4
+  n_layers: 6
+  feed_forward_dim: 768
