@@ -9,6 +9,7 @@ class BM25(TFIDF):
         super(BM25, self).__init__(documents, index_path)
         self.k1 = k1
         self.b = b
+        self.bm25_matrix = self.GetBM25Vector()
     
     def GetDocumentLengths(self):
         document_lengths = {}
@@ -19,7 +20,6 @@ class BM25(TFIDF):
             average_document_length += length
         return document_lengths, average_document_length/len(self.index.GetDocuments())
     
-    # TODO: Add methods for computing self.bm25_matrix
     def GetBM25IDF(self):
         N = len(self.index.GetDocuments())
         return {key: math.log((N + 1) / (n_qi + 0.5)) for key, n_qi in self.GetDocumentFrequencies().items()}
@@ -31,12 +31,14 @@ class BM25(TFIDF):
                                   dtype=np.float32)
         bm25_idf = self.GetBM25IDF() # dict  of word: bm25_imf
 
+        doc_lengths = [sum(list(self.GetDocumentTermCounts(doc).values())) for doc in docs]
+        doc_total_length = sum(doc_lengths)
+        avg_length = doc_total_length/len(doc_lengths)
         
         #IDF -> change to BM25
         for i, doc in enumerate(docs):
             for key, value in self.GetDocumentTermCounts(doc).items():
-                numerator = value * (self.k1 + 1)
-                bm25_vector[i, self.term_to_index[key]] = value * bm25_idf[key]
+                bm25_vector[i, self.term_to_index[key]] = (value * (self.k1 + 1)) / (value + self.k1 * (1 - self.b + self.b * (doc_lengths[i]/avg_length))) * bm25_idf[key]
 
         return bm25_vector.tocsr()
     
