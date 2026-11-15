@@ -7,6 +7,7 @@ defaults: # - folder: file.yaml to include under the "folder" named property of 
 device: mps
 base_path: "."
 top_k: 10
+batch_size: 64  # texts per forward pass, for training and embedding
 
 # Keep Hydra in the current directory to ensure relative paths are correct
 hydra:
