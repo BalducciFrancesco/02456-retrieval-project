@@ -12,21 +12,22 @@ def main(cfg):
     ### Load a dataset
     corpus = Corpus(dataset_name=cfg.dataset.name, base_dir=f'{cfg.base_path}/retrieval_data')
     train_queries, val_queries, test_queries = corpus.GetQuerySplits()
+    index_path = cfg.retriever.index_path.format(dataset=cfg.dataset.name)
 
     ### Initialize the model
     match cfg.retriever.method:
         case "dpr":
-            model = DPR(cfg, documents=corpus.all_documents)
+            model = DPR(documents=corpus.all_documents, cfg=cfg, index_path=index_path)
             print("DPR model was intialized, training now...")
             trainer = Trainer(corpus.train, cfg.retriever.training, cfg.batch_size)
             trainer.train(model.query_encoder, model.document_encoder)
             model.SaveEncoders()
             print("DPR model was trained, building index now...")
             model.BuildIndex()
-        case "tf-idf":
-            model = TFIDF(documents=corpus.all_documents)
+        case "tf_idf":
+            model = TFIDF(documents=corpus.all_documents, index_path=index_path)
         case "bm25":
-            model = BM25(documents=corpus.all_documents)
+            model = BM25(documents=corpus.all_documents, index_path=index_path)
         case _:
             raise ValueError(f"Unknown retriever: {cfg.retriever}")
 

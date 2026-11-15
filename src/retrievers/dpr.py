@@ -8,9 +8,9 @@ import pickle
 from src.data_utils.dataset import DocumentDataset, batched
 
 class DPR(Retriever):
-    def __init__(self, cfg, documents: list[dict]) -> None:
+    def __init__(self, documents: list[dict], index_path: str, cfg: dict) -> None:
         self.cfg = cfg
-        self.index_path = cfg.retriever.index_path.format(dataset=cfg.dataset.name)
+        self.index_path = index_path
         super().__init__(documents, self.index_path)
         self.__load_models()
 

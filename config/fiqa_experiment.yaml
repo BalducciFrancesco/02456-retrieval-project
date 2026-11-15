@@ -1,10 +1,10 @@
 defaults: # - folder: file.yaml to include under the "folder" named property of cfg
   - _self_  # Hydra magic
   - dataset: fiqa
-  - retriever: dpr
+  - retriever: bm25 # dpr / tf_idf /bm25
 
 
-device: mps
+device: mps # cuda / cpu / mps
 base_path: "."
 top_k: 10
 batch_size: 64  # texts per forward pass, for training and embedding
