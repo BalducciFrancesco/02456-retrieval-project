@@ -16,6 +16,10 @@ class TFIDF(Retriever):
         if type(self) == TFIDF:
             self.tfidf_matrix = self.GetDocumentsTFIDFVectors()
 
+    def EmbedDocuments(self, documents):
+        """TF-IDF has no precomputed embeddings. Matrix build in __init__"""
+        return None
+    
     def PreprocessText(self, text: str) -> list[str]:
         """
         Remove unwanted charatcters from text and lowercase
@@ -49,12 +53,9 @@ class TFIDF(Retriever):
         """
         res = {}
         # List of sets of words in a particular document (if present increase counter), no duplicate documents
-        doc_sets = [set(self.GetDocumentVocabulary(doc)) for doc in self.index.GetDocuments()]
-        for word in self.GetCorpusVocabulary():
-            res[word] = 0
-            for doc in doc_sets:
-                if word in doc:
-                    res[word] += 1
+        for doc in self.index.GetDocuments():
+            for word in set(self.PreprocessText(doc.GetText())):
+                res[word] = res.get(word, 0) + 1
         return res
     
     def GetInverseDocumentFrequencies(self) -> dict[str, float]:

@@ -43,8 +43,10 @@ class Retriever(ABC):
 
     @abstractmethod
     def EmbedDocuments(self, documents: list[dict]) -> NDArray[np.float32]:
-        raise NotImplementedError("Must overwrite")
-
+        """Return a (n_documents, dim) matrix, one row per document."""
+        #raise NotImplementedError("Must overwrite")
+        ...
+    
     @abstractmethod
     def CalculateScores(self, query: list[str]) -> NDArray[np.float32]:
         """
@@ -52,4 +54,6 @@ class Retriever(ABC):
         @param query: The input text(s) to which relevant passages should be found.
         @return: A numpy array of shape (n_queries, n_documents) with the scores for each query-document pair.
         """
-        raise NotImplementedError("Must overwrite")
+        #raise NotImplementedError("Must overwrite")
+        ...
+

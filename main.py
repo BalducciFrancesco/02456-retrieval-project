@@ -33,7 +33,7 @@ def main(cfg):
                     ]
     
     ### Initialize the model
-    model = TFIDF(documents=corpus.all_documents)
+    model = TFIDF(documents=corpus.all_documents, index_path='index/tf_idf_index_fiqa.pkl')
     #model = DPR(cfg, documents=corpus.all_documents)
     
     ### Retrieve top-k relevant queries
