@@ -9,6 +9,8 @@ __pycache__/
 # 
 outputs/
 retrieval_data/
+index/
+weights/
 .DS_Store
 
 # Distribution / packaging
