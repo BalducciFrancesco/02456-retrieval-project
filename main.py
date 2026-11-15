@@ -17,8 +17,12 @@ def main(cfg):
     match cfg.retriever.method:
         case "dpr":
             model = DPR(cfg, documents=corpus.all_documents)
-            trainer = Trainer(corpus.train)
+            print("DPR model was intialized, training now...")
+            trainer = Trainer(corpus.train, cfg.retriever.training, cfg.batch_size)
             trainer.train(model.query_encoder, model.document_encoder)
+            model.SaveEncoders()
+            print("DPR model was trained, building index now...")
+            model.BuildIndex()
         case "tf-idf":
             model = TFIDF(documents=corpus.all_documents)
         case "bm25":
@@ -26,7 +30,7 @@ def main(cfg):
         case _:
             raise ValueError(f"Unknown retriever: {cfg.retriever}")
 
-
+    print("Model ready, evaluating now...")
     ### Retrieve top-k relevant queries
     train_relevancies = retrieveQueryAndGetRelevancies(model, train_queries, k=cfg.top_k)
     val_relevancies = retrieveQueryAndGetRelevancies(model, val_queries, k=cfg.top_k)
