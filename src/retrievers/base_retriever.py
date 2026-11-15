@@ -44,4 +44,6 @@ class Retriever(ABC):
         @param query: The input text(s) to which relevant passages should be found.
         @return: A numpy array of shape (n_queries, n_documents) with the scores for each query-document pair.
         """
-        raise NotImplementedError("Must overwrite")
+        #raise NotImplementedError("Must overwrite")
+        ...
+
