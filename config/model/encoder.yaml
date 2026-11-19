@@ -1,6 +1,6 @@
 query_encoder_weights_path:
 document_encoder_weights_path:
-pooling_type: 'cls' # mean | cls | max
+pooling_type: 'mean' # mean | cls | max
 
 query_encoder:
   emb_dim: 128
@@ -8,6 +8,7 @@ query_encoder:
   n_heads: 4
   n_layers: 6
   feed_forward_dim: 768
+
 
 document_encoder:
   emb_dim: 128

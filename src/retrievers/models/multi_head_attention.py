@@ -5,6 +5,7 @@ import torch.nn as nn
 class MultiHeadAttention(nn.Module):
     def __init__(self, emb_dim: int, n_heads: int):
         super().__init__()
+        assert emb_dim % n_heads == 0, "emb_dim must be divisible by n_heads"
         self.n_heads = n_heads
         self.d = emb_dim // n_heads  # numbers per token, per head
         self.W_q = nn.Linear(emb_dim, emb_dim)
