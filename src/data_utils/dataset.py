@@ -1,6 +1,13 @@
 import numpy as np
 from numpy.typing import NDArray
+from tqdm import tqdm
 from src.data_utils.document import Document
+
+def batched(items: list, batch_size: int):
+    """Yield consecutive chunks of `items`, each of length `batch_size` (the last one may be shorter)."""
+    for i in tqdm(range(0, len(items), batch_size), desc="Batch"):
+        yield items[i : i + batch_size]
+
 
 class DocumentDataset:
     def __init__(self, documents: list[dict], embeddings: NDArray[np.float32] = None):
