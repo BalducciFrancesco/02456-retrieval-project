@@ -30,8 +30,13 @@ class MultiHeadAttention(nn.Module):
         # we transpose because we want the final two dimensions to be tokenxtoken
         scores = q @ k.transpose(-2, -1) / self.d ** 0.5
         if attention_mask is not None:
+            if attention_mask.shape != (batch, T):
+                raise ValueError("attention_mask must have shape (batch, sequence_length)")
+            mask = attention_mask.to(device=x.device)
+            if not mask.any(dim=1).all():
+                raise ValueError("Each sequence must contain at least one non-padding token")
             # mask [batch, T] -> [batch, 1, 1, T], so it covers every head and row
-            scores = scores.masked_fill(attention_mask[:, None, None, :] == 0, float("-inf"))
+            scores = scores.masked_fill(mask[:, None, None, :] == 0, float("-inf"))
         weights = torch.softmax(scores, dim=-1)  # [batch, heads, T, T], rows sum to 1
         projected_v = weights @ v                # [batch, heads, T, d]
         #group again by token and we flatten the head outputs into one vector per token
