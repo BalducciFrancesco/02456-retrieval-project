@@ -2,6 +2,24 @@ import torch
 import torch.nn as nn
 
 
+def scaled_dot_product_attention(q, k, v, mask=None):
+    """Scaled dot-product attention.
+
+    The maths of a single head. It only uses the last two dims [T, d_k], so
+    with q, k, v of shape [batch, heads, T, d_k] all heads run in one call.
+    mask: 1 = real token, 0 = padding; must broadcast to the scores [..., T, T].
+    Returns (output [..., T, d_k], weights [..., T, T]).
+    """
+    # scores[i, j] = how well query token i matches key token j, scaled by
+    # sqrt(d_k) so large d_k does not push softmax into near one-hot outputs
+    scores = q @ k.transpose(-2, -1) / q.size(-1) ** 0.5  # [..., T, T]
+    if mask is not None:
+        # -inf becomes 0 after softmax, so no token reads from padding
+        scores = scores.masked_fill(mask == 0, float("-inf"))
+    weights = torch.softmax(scores, dim=-1)  # each row i sums to 1: how token i splits its attention
+    return weights @ v, weights              # output row i = weighted average of the value vectors
+
+
 class MultiHeadAttention(nn.Module):
     def __init__(self, emb_dim: int, n_heads: int):
         super().__init__()
@@ -26,9 +44,7 @@ class MultiHeadAttention(nn.Module):
         k = self.separate_heads(self.W_k(x))  # [batch, heads, T, d]
         v = self.separate_heads(self.W_v(x))  # [batch, heads, T, d]
 
-        # [batch, heads, T, d] @ [batch, heads, d, T] -> [batch, heads, T, T]
-        # we transpose because we want the final two dimensions to be tokenxtoken
-        scores = q @ k.transpose(-2, -1) / self.d ** 0.5
+        mask = None
         if attention_mask is not None:
             if attention_mask.shape != (batch, T):
                 raise ValueError("attention_mask must have shape (batch, sequence_length)")
@@ -36,9 +52,9 @@ class MultiHeadAttention(nn.Module):
             if not mask.any(dim=1).all():
                 raise ValueError("Each sequence must contain at least one non-padding token")
             # mask [batch, T] -> [batch, 1, 1, T], so it covers every head and row
-            scores = scores.masked_fill(mask[:, None, None, :] == 0, float("-inf"))
-        weights = torch.softmax(scores, dim=-1)  # [batch, heads, T, T], rows sum to 1
-        projected_v = weights @ v                # [batch, heads, T, d]
-        #group again by token and we flatten the head outputs into one vector per token
-        z = projected_v.transpose(1, 2).reshape(batch, T, -1)  # [batch, T, heads, d] -> [batch, T, emb_dim]
+            mask = mask[:, None, None, :]
+        # all heads in one call: the heads dim is just another batch dim
+        projected_v, weights = scaled_dot_product_attention(q, k, v, mask)  # [batch, heads, T, d], [batch, heads, T, T]
+        heads = [projected_v[:, h] for h in range(self.n_heads)]  # n_heads x [batch, T, d]
+        z = torch.cat(heads, dim=-1)                               # Concat(head_1..head_h) -> [batch, T, emb_dim]
         return self.W_o(z), weights              # [batch, T, emb_dim], [batch, heads, T, T]

@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from multi_head_attention import MultiHeadAttention
+from .multi_head_attention import MultiHeadAttention
 import math
 
 class TransformerEncoder(nn.Module):
@@ -12,6 +11,8 @@ class TransformerEncoder(nn.Module):
         self.emb_dim = emb_dim
         self.feed_forward_dim = feed_forward_dim
         self.vocab_size = vocab_size
+        if pool_type not in {'mean', 'max', 'cls'}:
+            raise ValueError("pool_type must be 'mean', 'max', or 'cls'")
         self.pool_type = pool_type
         self.dropout_p = dropout
         self.setup_model()
@@ -24,34 +25,61 @@ class TransformerEncoder(nn.Module):
         self.embedding = nn.Embedding(self.vocab_size, self.emb_dim) if self.vocab_size else None
         self.pos_encoding = PositionalEncoding(self.emb_dim, self.dropout_p, 5000)
 
-        self.model = nn.Sequential(*[
+        self.model = nn.ModuleList([
             EncoderLayer(self.emb_dim, self.feed_forward_dim, self.dropout_p, n_heads=self.n_heads)
             for _ in range(self.n_layers)
         ])
 
-    def pool(self, x):
+    def pool(self, x, attention_mask=None):
         """
         Given a batch_size x sequence_length x emb_dim tensor, pool the input along the sequence_length dimension 
         Returns: A pooled vector of shape batch_size x emb_dim
         """
+        # True/1 marks real tokens, False/0 marks padding.
+        if attention_mask is None:
+            mask = torch.ones(x.shape[:2], dtype=torch.bool, device=x.device)
+        else:
+            if attention_mask.shape != x.shape[:2]:
+                raise ValueError("attention_mask must have shape (batch, sequence_length)")
+            mask = attention_mask.to(device=x.device, dtype=torch.bool)
+        if not mask.any(dim=1).all():
+            raise ValueError("Each sequence must contain at least one non-padding token")
+
         if self.pool_type == 'cls':
+            if not mask[:, 0].all():
+                raise ValueError("CLS pooling requires a non-padding [CLS] token at position zero")
             return x[:, 0, :]
         
-        elif self.pool_type == 'max':
-            return torch.max(x, 1).values
-        
-        elif self.pool_type == 'mean':
-            return x.mean(dim=1)
+        is_padding = ~mask.unsqueeze(-1)  # [batch, T, 1], True at padding; broadcasts over emb_dim
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
+        if self.pool_type == 'max':
+            # padding set to -inf can never be the max
+            x = x.masked_fill(is_padding, float('-inf'))
+            return x.max(dim=1).values
+
+        if self.pool_type == 'mean':
+            # padding set to 0 adds nothing to the sum; divide by the number of real tokens
+            x = x.masked_fill(is_padding, 0)
+            n_real = mask.sum(dim=1, keepdim=True)  # [batch, 1]
+            return x.sum(dim=1) / n_real
+
+    def forward(self, x: torch.Tensor, attention_mask: torch.Tensor | None = None,
+                output_attentions: bool = False):
         """
         Run a forward pass on the model
         """
         x = self.embedding(x) * math.sqrt(self.emb_dim)
         x = self.pos_encoding(x)
 
-        x = self.model(x)
-        return self.pool(x)
+        attentions = []
+        for layer in self.model:
+            if output_attentions:
+                x, weights = layer(x, attention_mask, output_attentions=True)
+                attentions.append(weights)
+            else:
+                x = layer(x, attention_mask)
+        pooled = self.pool(x, attention_mask)
+        return (pooled, tuple(attentions)) if output_attentions else pooled
 
 
 class PositionalEncoding(nn.Module):
@@ -90,10 +118,10 @@ class EncoderLayer(nn.Module):
         self.norm2 = nn.LayerNorm(emb_dim)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def forward(self, x, attention_mask=None, output_attentions=False):
 
         # Attention Part
-        attn_out, attn_weights = self.attn(x)
+        attn_out, attn_weights = self.attn(x, attention_mask)
         x = x + self.dropout(attn_out)
         x = self.norm1(x)
 
@@ -102,7 +130,7 @@ class EncoderLayer(nn.Module):
         x = x + self.dropout(linear_out)
         x = self.norm2(x)
 
-        return x
+        return (x, attn_weights) if output_attentions else x
 
 #Test 
 # sh = SingleHead(2, 4)
@@ -113,9 +141,10 @@ class EncoderLayer(nn.Module):
 
 # print(torch.round(sh.self_attention(Q, K, V), decimals=1))
 
-model = TransformerEncoder(n_layers=2, n_heads=1, emb_dim=64, feed_forward_dim=256, vocab_size=1000)
-tokens = torch.randint(0, 1000, (8, 20))
-print(model(tokens).shape)
+if __name__ == '__main__':
+    model = TransformerEncoder(n_layers=2, n_heads=4, emb_dim=64, feed_forward_dim=256, vocab_size=1000)
+    tokens = torch.randint(0, 1000, (8, 20))
+    print(model(tokens).shape)
 
 
 """
