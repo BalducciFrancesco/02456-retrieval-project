@@ -6,6 +6,7 @@ from src.retrievers.models.hf_encoder import HFEncoder
 import os
 import pickle
 from src.data_utils.dataset import DocumentDataset, batched
+from src.training.trainer import Trainer
 
 class DPR(Retriever):
     def __init__(self, documents: list[dict], index_path: str, cfg: dict) -> None:
@@ -15,17 +16,35 @@ class DPR(Retriever):
         self.__load_models()
 
     def __load_models(self):
+        self.weights_loaded = True  # stays True only if every encoder found its saved weights
         for encoder_name in ('query_encoder', 'document_encoder'):
             encoder_cfg = getattr(self.cfg.retriever, encoder_name)
             encoder = HFEncoder(**encoder_cfg).to(self.cfg.device)
             weights_path = self.__weights_path(encoder_name)
             if weights_path and os.path.exists(weights_path):
                 encoder.load_state_dict(torch.load(weights_path, map_location=self.cfg.device))
+            else:
+                self.weights_loaded = False
             setattr(self, encoder_name, encoder)
 
     def __weights_path(self, encoder_name: str) -> str | None:
         weights_path = getattr(self.cfg.retriever, encoder_name).get('weights_path', None)
         return weights_path.format(dataset=self.cfg.dataset.name) if weights_path else None
+
+    def Prepare(self, train_data) -> None:
+        """Train (unless saved weights were loaded) and build the index (unless a saved one is still valid)."""
+        if self.weights_loaded:
+            print("DPR loaded saved weights, skipping training...")
+        else:
+            print("DPR training now...")
+            Trainer(train_data, self.cfg.retriever.training, self.cfg.batch_size).train(self.query_encoder, self.document_encoder)
+            self.SaveEncoders()
+        # a fresh training run makes any saved index stale, so rebuild it then too
+        if not self.weights_loaded or self.index.GetEmbeddings() is None:
+            print("DPR building index now...")
+            self.BuildIndex()
+        else:
+            print("DPR loaded saved index, skipping index build...")
 
     def SaveEncoders(self):
         """Save both encoders' weights, so a later run can reuse them instead of retraining."""
