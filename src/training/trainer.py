@@ -55,7 +55,7 @@ class Trainer:
     
         if not model.weights_loaded:
             print("DPR training now...")
-            self.fit(model.query_encoder, model.document_encoder, split, params["epochs"], params["lr"], params["batch_size"])
+            self.fit(model.query_encoder, model.document_encoder, model.Embed, split, params["epochs"], params["lr"], params["batch_size"])
             model.SaveEncoders()
 
         model.BuildIndex()  # skips if already loaded from a saved index
@@ -72,8 +72,8 @@ class Trainer:
         return queries, documents
 
     @staticmethod
-    def fit(query_encoder: nn.Module, document_encoder: nn.Module, split: Dataset, epochs: int, lr: float, batch_size: int):
-        """Contrastive training of both encoders."""
+    def fit(query_encoder: nn.Module, document_encoder: nn.Module, embed, split: Dataset, epochs: int, lr: float, batch_size: int):
+        """Contrastive training of both encoders. embed(encoder, texts) -> (B, emb_dim) tokenizes and encodes texts."""
         lr = float(lr)  
         rows = list(zip(split["question"], split["text"]))
         loader = DataLoader(rows, batch_size=batch_size, shuffle=True, collate_fn=Trainer.collate)
@@ -87,8 +87,8 @@ class Trainer:
             total_loss = 0.0
             # Forward pass
             for queries, documents in tqdm(loader, desc=f"Epoch {epoch + 1}/{epochs}"):
-                queries_embeddings = query_encoder(queries)        # (B, embedding_dim)
-                documents_embeddings = document_encoder(documents) # (B, embedding_dim)
+                queries_embeddings = embed(query_encoder, queries)        # (B, embedding_dim)
+                documents_embeddings = embed(document_encoder, documents) # (B, embedding_dim)
 
                 # Compute loss and backpropagate
                 optimizer.zero_grad()

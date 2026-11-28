@@ -1,5 +1,6 @@
 method: "dpr"
 index_path: "index/dpr_index_{dataset}.pkl"
+tokenizer: bert-base-uncased  # shared by both encoders; its vocab size sets the embedding table
 
 grid_search:  # every combination is trained and scored on val
   name: "grid_search_1"  # prefix of trial file names; same name + same params reuses saved weights
@@ -9,17 +10,13 @@ grid_search:  # every combination is trained and scored on val
   pooling_type: ['mean', 'cls']
 
 query_encoder:
-  name: prajjwal1/bert-tiny
   emb_dim: 128
-  hidden_dim: 32
   n_heads: 4
   n_layers: 6
   feed_forward_dim: 768
 
 document_encoder:
-  name: prajjwal1/bert-tiny
   emb_dim: 128
-  hidden_dim: 32
   n_heads: 4
   n_layers: 6
   feed_forward_dim: 768
