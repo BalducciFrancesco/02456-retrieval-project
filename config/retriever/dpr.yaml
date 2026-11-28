@@ -1,14 +1,15 @@
 method: "dpr"
 index_path: "index/dpr_index_{dataset}.pkl"
 
-training:
-  epochs: 10
-  lr: 1e-5
-pooling_type: 'cls' # mean | cls | max
+grid_search:  # every combination is trained and scored on val
+  name: "grid_search_1"  # prefix of trial file names; same name + same params reuses saved weights
+  epochs: [10, 15]
+  lr: [1e-4, 5e-4]
+  batch_size: [16, 32]
+  pooling_type: ['mean', 'cls']
 
 query_encoder:
   name: prajjwal1/bert-tiny
-  weights_path: "weights/dpr_query_encoder_{dataset}.pt"
   emb_dim: 128
   hidden_dim: 32
   n_heads: 4
@@ -17,7 +18,6 @@ query_encoder:
 
 document_encoder:
   name: prajjwal1/bert-tiny
-  weights_path: "weights/dpr_document_encoder_{dataset}.pt"
   emb_dim: 128
   hidden_dim: 32
   n_heads: 4
