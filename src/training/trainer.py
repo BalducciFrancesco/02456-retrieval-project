@@ -32,8 +32,8 @@ class Trainer:
             params = {"epochs": epochs, "lr": lr, "batch_size": batch_size, "pooling_type": pooling}
             print(f"\n{'=' * 50}\nGrid search trial: {params}")
             model = self.build_dpr(params, "trial", self.corpus.train)
-            relevancies = retrieveQueryAndGetRelevancies(model, self.val_queries, k=self.cfg.top_k)
-            val_scores = Evaluate(relevancies, self.val_queries, k=self.cfg.top_k)
+            relevancies = retrieveQueryAndGetRelevancies(model, self.val_queries, k=self.cfg.top_k, batch_size=self.cfg.batch_size)
+            val_scores = Evaluate(relevancies, self.val_queries, k=self.cfg.top_k, batch_size=self.cfg.batch_size)
             print(f"Validation results: {val_scores}")
             results.append({**params, **val_scores})
             if val_scores['MRR'] > best_mrr:

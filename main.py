@@ -30,14 +30,14 @@ def main(cfg):
     print("Model ready, evaluating now...")
 
     ### Retrieve top-k relevant queries
-    train_relevancies = retrieveQueryAndGetRelevancies(model, train_queries, k=cfg.top_k)
-    val_relevancies = retrieveQueryAndGetRelevancies(model, val_queries, k=cfg.top_k)
-    test_relevancies = retrieveQueryAndGetRelevancies(model, test_queries, k=cfg.top_k)
+    train_relevancies = retrieveQueryAndGetRelevancies(model, train_queries, k=cfg.top_k, batch_size=cfg.batch_size)
+    val_relevancies = retrieveQueryAndGetRelevancies(model, val_queries, k=cfg.top_k, batch_size=cfg.batch_size)
+    test_relevancies = retrieveQueryAndGetRelevancies(model, test_queries, k=cfg.top_k, batch_size=cfg.batch_size)
 
     ### Evaluate
-    train_scores = Evaluate(train_relevancies, train_queries, k=cfg.top_k)
-    val_scores = Evaluate(val_relevancies, val_queries, k=cfg.top_k)
-    test_scores = Evaluate(test_relevancies, test_queries, k=cfg.top_k)
+    train_scores = Evaluate(train_relevancies, train_queries, k=cfg.top_k, batch_size=cfg.batch_size)
+    val_scores = Evaluate(val_relevancies, val_queries, k=cfg.top_k, batch_size=cfg.batch_size)
+    test_scores = Evaluate(test_relevancies, test_queries, k=cfg.top_k, batch_size=cfg.batch_size)
 
     print(pd.DataFrame({'train': train_scores, 'val': val_scores, 'test': test_scores}).T)
 
