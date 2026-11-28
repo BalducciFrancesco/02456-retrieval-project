@@ -83,7 +83,7 @@ ENCODER_SETTINGS = dict(n_layers=6, n_heads=4, emb_dim=128, feed_forward_dim=768
 def main():
     parser = argparse.ArgumentParser(description="Save attention heatmaps for a few texts.")
     parser.add_argument("--backend", choices=("bert", "custom"), default="bert")
-    parser.add_argument("--weights", type=Path, help="Saved HFEncoder or TransformerEncoder state_dict")
+    parser.add_argument("--weights", type=Path, help="Saved TransformerEncoder state_dict (use with --backend custom)")
     parser.add_argument("--texts", nargs="+", default=[
         "How do interest rates affect bond prices?",
         "When interest rates rise, the market price of existing bonds usually falls.",
@@ -106,9 +106,6 @@ def main():
         model_description = MODEL_NAME
     if args.weights:
         state = torch.load(args.weights, map_location="cpu", weights_only=True)
-        if args.backend == "bert":
-            # Trainer saves HFEncoder, which wraps BertModel under 'model'.
-            state = {key.removeprefix("model."): value for key, value in state.items()}
         model.load_state_dict(state)
         model_description += f" ({args.weights.name})"
     maps = extract_attention(model, batch["input_ids"], batch["attention_mask"])

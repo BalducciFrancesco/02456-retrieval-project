@@ -2,6 +2,7 @@ hydra-core
 transformers
 torch
 datasets
+pandas
 scipy
 .
 matplotlib

@@ -1,10 +1,13 @@
+
 import hydra
+import pandas as pd
 from src.data_utils.corpus import Corpus
 from src.retrievers.bm25 import BM25
-from src.retrievers.dpr import DPR
+from src.training.trainer import Trainer
 from src.retrievers.tf_idf import TFIDF
 from src.retrievers.utils import retrieveQueryAndGetRelevancies
 from src.evaluation.metrics import Evaluate
+
 
 @hydra.main(config_path='config', config_name='fiqa_experiment.yaml', version_base=None)
 def main(cfg):
@@ -16,8 +19,7 @@ def main(cfg):
     ### Initialize the model
     match cfg.retriever.method:
         case "dpr":
-            model = DPR(documents=corpus.all_documents, cfg=cfg, index_path=index_path)
-            model.Prepare(corpus.train)
+            model = Trainer(cfg, corpus, val_queries).train()
         case "tf_idf":
             model = TFIDF(documents=corpus.all_documents, index_path=index_path)
         case "bm25":
@@ -26,19 +28,19 @@ def main(cfg):
             raise ValueError(f"Unknown retriever: {cfg.retriever}")
 
     print("Model ready, evaluating now...")
+
     ### Retrieve top-k relevant queries
-    train_relevancies = retrieveQueryAndGetRelevancies(model, train_queries, k=cfg.top_k)
-    val_relevancies = retrieveQueryAndGetRelevancies(model, val_queries, k=cfg.top_k)
-    test_relevancies = retrieveQueryAndGetRelevancies(model, test_queries, k=cfg.top_k)
+    train_relevancies = retrieveQueryAndGetRelevancies(model, train_queries, k=cfg.top_k, batch_size=cfg.batch_size)
+    val_relevancies = retrieveQueryAndGetRelevancies(model, val_queries, k=cfg.top_k, batch_size=cfg.batch_size)
+    test_relevancies = retrieveQueryAndGetRelevancies(model, test_queries, k=cfg.top_k, batch_size=cfg.batch_size)
 
     ### Evaluate
-    train_scores = Evaluate(train_relevancies, train_queries)
-    val_scores = Evaluate(val_relevancies, val_queries)
-    test_scores = Evaluate(test_relevancies, test_queries)
+    train_scores = Evaluate(train_relevancies, train_queries, k=cfg.top_k, batch_size=cfg.batch_size)
+    val_scores = Evaluate(val_relevancies, val_queries, k=cfg.top_k, batch_size=cfg.batch_size)
+    test_scores = Evaluate(test_relevancies, test_queries, k=cfg.top_k, batch_size=cfg.batch_size)
 
-    print(f'Train results: {train_scores}')
-    print(f'Val results: {val_scores}')
-    print(f'Test results: {test_scores}')
+    print(pd.DataFrame({'train': train_scores, 'val': val_scores, 'test': test_scores}).T)
+
 
 if __name__ == '__main__':
     main()
