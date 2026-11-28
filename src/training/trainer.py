@@ -1,4 +1,5 @@
 import random
+import pandas as pd
 from itertools import product
 import torch
 import torch.nn as nn
@@ -26,7 +27,7 @@ class Trainer:
     def grid_search(self) -> dict:
         """Train a DPR per combination in cfg.retriever.grid_search; return the params with the best validation MRR."""
         gs = self.cfg.retriever.grid_search
-        best_mrr, best = -1, None
+        best_mrr, best, results = -1, None, []
         for epochs, lr, batch_size, pooling in product(gs.epochs, gs.lr, gs.batch_size, gs.pooling_type):
             params = {"epochs": epochs, "lr": lr, "batch_size": batch_size, "pooling_type": pooling}
             print(f"\n{'=' * 50}\nGrid search trial: {params}")
@@ -34,9 +35,11 @@ class Trainer:
             relevancies = retrieveQueryAndGetRelevancies(model, self.val_queries, k=self.cfg.top_k)
             val_scores = Evaluate(relevancies, self.val_queries, k=self.cfg.top_k)
             print(f"Validation results: {val_scores}")
+            results.append({**params, **val_scores})
             if val_scores['MRR'] > best_mrr:
                 best_mrr, best = val_scores['MRR'], params
 
+        print(pd.DataFrame(results))
         print(f"\n{'=' * 50}\nBest DPR params: {best} (val MRR {best_mrr:.4f})")
         return best
 

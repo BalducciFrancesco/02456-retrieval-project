@@ -1,5 +1,6 @@
 
 import hydra
+import pandas as pd
 from src.data_utils.corpus import Corpus
 from src.retrievers.bm25 import BM25
 from src.training.trainer import Trainer
@@ -38,9 +39,7 @@ def main(cfg):
     val_scores = Evaluate(val_relevancies, val_queries, k=cfg.top_k)
     test_scores = Evaluate(test_relevancies, test_queries, k=cfg.top_k)
 
-    print(f'Train results: {train_scores}')
-    print(f'Val results: {val_scores}')
-    print(f'Test results: {test_scores}')
+    print(pd.DataFrame({'train': train_scores, 'val': val_scores, 'test': test_scores}).T)
 
 
 if __name__ == '__main__':
