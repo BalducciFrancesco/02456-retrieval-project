@@ -42,19 +42,14 @@ class Corpus:
 
     @property
     def all_documents(self):
-        train_text, train_ids = list(self.train['text']), list(self.train['document_id'])
-        val_text, val_ids =     list(self.val['text']), list(self.val['document_id'])
-        
-        all_text = train_text + val_text
-        all_ids = train_ids   + val_ids
-
-        if self.test is not None:
-            test_text, test_ids = list(self.test['text']), list(self.test['document_id'])
-            all_text += test_text
-            all_ids  += test_ids
-
-        return Dataset.from_dict({'text': all_text,
-                                  'document_id': all_ids})
+        # one entry per document id: a passage shared by several queries must appear in the index only once
+        docs = {}
+        for split in (self.train, self.val, self.test):
+            if split is not None:
+                for texts, ids in zip(split['text'], split['document_id']):
+                    docs.update(zip(ids, texts))
+        return Dataset.from_dict({'text': [[t] for t in docs.values()],
+                                  'document_id': [[i] for i in docs]})
 
     def GetQuerySplits(self):
         def make(split):
@@ -79,35 +74,28 @@ class Corpus:
         return {key: ds[key] for key in ds.keys()}
 
     def __rename_columns(self) -> dict[Dataset]:
-        column_mapping = {'fiqa':  'ground_truths',
-                          'squad': 'context'
-                         }
-        
         for key in self.ds:
-            self.ds[key] = self.ds[key].rename_column(column_mapping[self.dataset_name], 'text')
+            if self.dataset_name == 'fiqa':
+                self.ds[key] = self.ds[key].rename_column('ground_truths', 'text')
+            else:  # squad: context is a single passage, wrap it so 'text' is always a list of passages
+                self.ds[key] = self.ds[key].map(lambda row: {'text': [row['context']]}, remove_columns=['context'])
         return self.ds
 
     def __assign_ids(self):
         q_id_counter = 0
-        doc_id_counter = 0
+        doc_ids = {}  # passage text -> id, so the same passage always gets the same id
         relevant_document_ids = {}
 
         for key in self.ds:
             query_ids = []
             document_ids = []
-            for i in range(len(self.ds[key])):
+            for documents in self.ds[key]['text']:  # read the column once, not once per row
                 query_ids.append(f'q{q_id_counter}')
-                documents = self.ds[key]['text'][i]
-                relevant_ids = []
-                for doc in documents:
-                    relevant_ids.append(f'doc{doc_id_counter}')
-                    doc_id_counter += 1
-                
+                relevant_ids = [doc_ids.setdefault(doc, f'doc{len(doc_ids)}') for doc in documents]
                 document_ids.append(relevant_ids)
-                
-                relevant_document_ids[f'q{q_id_counter}'] = relevant_ids
+                relevant_document_ids[f'q{q_id_counter}'] = list(dict.fromkeys(relevant_ids))  # drop duplicates
                 q_id_counter += 1
-                
+
             self.ds[key] = self.ds[key].add_column('query_id', query_ids)
             self.ds[key] = self.ds[key].add_column('document_id', document_ids)
 
